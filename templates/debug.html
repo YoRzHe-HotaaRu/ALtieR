@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - AI Chatbot Test</title>
+</head>
+<body>
+    <h1>Debug - AI Chatbot Test</h1>
+    <p>Use browser console to check for JavaScript errors and debug information.</p>
+    
+    <h2>Test Results Display</h2>
+    <div id="test-results" style="display: none; border: 2px solid red; padding: 20px; background: yellow;">
+        <h3>Results Section Test</h3>
+        <div id="test-winner">Winner: Test Winner</div>
+        <div id="test-grid">
+            <div class="test-result" style="border: 1px solid blue; margin: 10px; padding: 10px;">
+                <h4>Test AI Model</h4>
+                <p>This is a test response to verify results display.</p>
+                <div>Score: 85 pts | Time: 2.3s</div>
+            </div>
+        </div>
+    </div>
+    
+    <button onclick="showTestResults()">Show Test Results</button>
+    <button onclick="hideTestResults()">Hide Test Results</button>
+    <button onclick="checkElements()">Check DOM Elements</button>
+    
+    <script>
+        function showTestResults() {
+            const results = document.getElementById('test-results');
+            results.style.display = 'block';
+            console.log('Test results shown');
+        }
+        
+        function hideTestResults() {
+            const results = document.getElementById('test-results');
+            results.style.display = 'none';
+            console.log('Test results hidden');
+        }
+        
+        function checkElements() {
+            const elements = [
+                'resultsSection',
+                'resultsGrid', 
+                'winnerName',
+                'modelsGrid',
+                'progressSection'
+            ];
+            
+            console.log('Checking DOM elements:');
+            elements.forEach(id => {
+                const el = document.getElementById(id);
+                console.log(`${id}:`, el ? 'Found' : 'MISSING', el);
+                if (el) {
+                    console.log(`${id} style display:`, el.style.display);
+                    console.log(`${id} classList:`, el.classList.toString());
+                }
+            });
+        }
+        
+        // Check elements on page load
+        window.onload = function() {
+            console.log('Page loaded, checking elements...');
+            checkElements();
+        };
+    </script>
+</body>
+</html>

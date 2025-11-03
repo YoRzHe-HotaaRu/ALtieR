@@ -94,6 +94,13 @@ class OpenRouterClient:
     def __init__(self):
         self.api_key = os.getenv('OPENROUTER_API_KEY')
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
+        
+        if not self.api_key:
+            logger.error("🚨 OPENROUTER_API_KEY not found in environment variables!")
+            logger.error("Please check your .env file and ensure OPENROUTER_API_KEY is set")
+        else:
+            logger.info(f"✅ OpenRouter API key loaded: {self.api_key[:20]}...")
+        
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -103,6 +110,18 @@ class OpenRouterClient:
     
     def make_request(self, model_name, message, timeout=30):
         """Make a request to OpenRouter API"""
+        logger.info(f"🚀 Making request to {model_name} with message: '{message[:50]}...'")
+        
+        # Check API key first
+        if not self.api_key:
+            logger.error(f"🚨 No API key available for {model_name}")
+            return {
+                "success": False,
+                "error": "No OpenRouter API key configured",
+                "elapsed_time": 0,
+                "content": ""
+            }
+        
         payload = {
             "model": model_name,
             "messages": [
@@ -114,6 +133,8 @@ class OpenRouterClient:
         
         try:
             start_time = time.time()
+            logger.info(f"📡 Sending POST request to {self.base_url}")
+            
             response = requests.post(
                 self.base_url,
                 headers=self.headers,
@@ -121,33 +142,68 @@ class OpenRouterClient:
                 timeout=timeout
             )
             
+            logger.info(f"📥 Response status: {response.status_code}")
+            
             if response.status_code == 200:
                 data = response.json()
+                logger.info(f"📊 Raw API response: {data}")
+                
                 elapsed_time = time.time() - start_time
-                content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                
+                # Enhanced response parsing with multiple fallbacks
+                content = ""
+                
+                # Try different response structures
+                if "choices" in data and data["choices"]:
+                    choice = data["choices"][0]
+                    if "message" in choice and "content" in choice["message"]:
+                        content = choice["message"]["content"]
+                        logger.info(f"✅ Content extracted via message.content: '{content[:100]}...'")
+                    elif "text" in choice:
+                        content = choice["text"]
+                        logger.info(f"✅ Content extracted via text: '{content[:100]}...'")
+                    elif "content" in choice:
+                        content = choice["content"]
+                        logger.info(f"✅ Content extracted via content: '{content[:100]}...'")
+                
+                # Log final content
+                if content:
+                    logger.info(f"🎯 Final content length: {len(content)} chars")
+                    logger.info(f"🎯 Content preview: '{content[:100]}...'")
+                else:
+                    logger.warning(f"⚠️ No content found in response for {model_name}")
+                    logger.warning(f"⚠️ Available keys: {list(data.keys())}")
+                
                 return {
                     "success": True,
                     "content": content,
                     "elapsed_time": elapsed_time,
-                    "usage": data.get("usage", {})
+                    "usage": data.get("usage", {}),
+                    "raw_response": data
                 }
             else:
+                logger.error(f"❌ API Error {response.status_code}: {response.text}")
                 return {
                     "success": False,
                     "error": f"HTTP {response.status_code}: {response.text}",
-                    "elapsed_time": time.time() - start_time
+                    "elapsed_time": time.time() - start_time,
+                    "content": ""
                 }
         except requests.exceptions.Timeout:
+            logger.error(f"⏰ Request timeout for {model_name}")
             return {
                 "success": False,
                 "error": "Request timeout",
-                "elapsed_time": timeout
+                "elapsed_time": timeout,
+                "content": ""
             }
         except Exception as e:
+            logger.error(f"💥 Exception in {model_name}: {str(e)}")
             return {
                 "success": False,
                 "error": str(e),
-                "elapsed_time": time.time() - start_time
+                "elapsed_time": time.time() - start_time,
+                "content": ""
             }
 
 # Initialize OpenRouter client
@@ -177,6 +233,8 @@ def calculate_score(response_data):
 
 def process_single_model(request_id, model_name, user_message):
     """Process a single AI model request"""
+    logger.info(f"🔄 Starting processing for {model_name}")
+    
     # Update status to processing
     socketio.emit('model_update', {
         'request_id': request_id,
@@ -188,14 +246,27 @@ def process_single_model(request_id, model_name, user_message):
     # Make API request
     response_data = openrouter_client.make_request(model_name, user_message)
     
+    # Log response details
+    logger.info(f"📋 Response from {model_name}:")
+    logger.info(f"  - Success: {response_data.get('success', False)}")
+    logger.info(f"  - Content length: {len(response_data.get('content', ''))}")
+    logger.info(f"  - Content preview: '{response_data.get('content', '')[:100]}...'")
+    logger.info(f"  - Error: {response_data.get('error', 'None')}")
+    
     # Calculate score
     score = calculate_score(response_data)
+    logger.info(f"📊 Score for {model_name}: {score}")
+    
+    # Extract response content safely
+    response_content = response_data.get("content", "")
+    if not response_content:
+        logger.warning(f"⚠️ Empty response content from {model_name}")
     
     # Complete the request
     chat_state.complete_model(
-        request_id, 
-        model_name, 
-        response_data.get("content", ""), 
+        request_id,
+        model_name,
+        response_content,
         response_data.get("elapsed_time", 0),
         score
     )
@@ -208,6 +279,8 @@ def process_single_model(request_id, model_name, user_message):
         'progress': 100,
         'score': score
     })
+    
+    logger.info(f"✅ Completed {model_name} with score {score}")
     
     return {
         "model": model_name,
@@ -238,6 +311,45 @@ def index():
     """Serve the main HTML page"""
     return render_template('index.html')
 
+@app.route('/debug')
+def debug_page():
+    """Serve the debug page"""
+    return render_template('debug.html')
+
+@app.route('/api/debug/test', methods=['GET'])
+def debug_test():
+    """Test endpoint to check OpenRouter API setup"""
+    logger.info("🧪 Running debug test...")
+    
+    # Check environment
+    api_key = os.getenv('OPENROUTER_API_KEY')
+    debug_info = {
+        "api_key_status": "✅ Set" if api_key else "❌ Missing",
+        "api_key_prefix": api_key[:10] + "..." if api_key else "None",
+        "available_models": list(chat_state.model_configs.keys()),
+        "client_initialized": openrouter_client.api_key is not None
+    }
+    
+    # Try a simple test with first free model
+    test_model = "minimax/minimax-m2:free"
+    
+    if api_key:
+        logger.info(f"🧪 Testing with model: {test_model}")
+        try:
+            test_response = openrouter_client.make_request(test_model, "Hello, test message", timeout=10)
+            debug_info["test_response"] = {
+                "success": test_response.get("success", False),
+                "content_length": len(test_response.get("content", "")),
+                "error": test_response.get("error", "None"),
+                "elapsed_time": test_response.get("elapsed_time", 0)
+            }
+            if test_response.get("content"):
+                debug_info["test_response"]["content_preview"] = test_response.get("content")[:100]
+        except Exception as e:
+            debug_info["test_error"] = str(e)
+    
+    return jsonify(debug_info)
+
 @app.route('/api/chat', methods=['POST'])
 def handle_chat():
     """Handle chat requests and trigger multi-model processing"""
@@ -247,8 +359,12 @@ def handle_chat():
     if not user_message:
         return jsonify({'error': 'Message is required'}), 400
     
+    # Log the chat request
+    logger.info(f"📝 Chat request received: '{user_message[:50]}...'")
+    
     # Create new request
     request_id = chat_state.create_request(user_message)
+    logger.info(f"🆔 Created request ID: {request_id}")
     
     # Initialize model statuses
     for model_name in chat_state.model_configs.keys():
@@ -256,6 +372,7 @@ def handle_chat():
     
     # Start processing in background
     def process_all_models():
+        logger.info(f"🚀 Starting multi-model processing for {user_message[:50]}...")
         model_results = []
         
         # Process all models in parallel
@@ -269,12 +386,14 @@ def handle_chat():
                 try:
                     result = future.result()
                     model_results.append(result)
+                    logger.info(f"✅ {result['model']} completed with score {result['score']}")
                 except Exception as e:
                     model_name = future_to_model[future]
-                    logger.error(f"Error processing {model_name}: {e}")
+                    logger.error(f"❌ Error processing {model_name}: {e}")
         
         # Determine winner
         winner = determine_winner(model_results)
+        logger.info(f"🏆 Winner determined: {winner}")
         
         # Complete the request
         all_scores = {result["model"]: result["score"] for result in model_results}
@@ -286,6 +405,8 @@ def handle_chat():
             'winner_model': winner,
             'all_scores': all_scores
         })
+        
+        logger.info(f"🎉 Request {request_id} completed! Winner: {winner}")
     
     # Start background processing
     threading.Thread(target=process_all_models, daemon=True).start()

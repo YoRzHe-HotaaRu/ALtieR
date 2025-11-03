@@ -55,9 +55,13 @@
             </section>
 
             <!-- Progress Tracking Section -->
-            <section class="progress-section">
+            <section class="progress-section" id="progressSection">
                 <div class="progress-header">
-                    <h2>🗂️ Model Progress</h2>
+                    <h2>🤖 AI Models Live Progress</h2>
+                    <div class="progress-status" id="progressStatus">
+                        <span class="status-pulse">⚡</span>
+                        <span>Ready to process</span>
+                    </div>
                     <div class="progress-controls">
                         <button id="clearResults" class="clear-btn">Clear Results</button>
                     </div>
@@ -70,31 +74,45 @@
                 
                 <!-- Overall Progress -->
                 <div class="overall-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="overallProgress"></div>
+                    <div class="progress-info">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="overallProgress"></div>
+                        </div>
+                        <span class="progress-text" id="progressText">Ready to process</span>
                     </div>
-                    <span class="progress-text" id="progressText">Ready to process</span>
                 </div>
             </section>
 
-            <!-- Results Section -->
-            <section class="results-section" id="resultsSection" style="display: none;">
-                <div class="results-header">
-                    <h2>🏆 Results</h2>
-                    <div class="winner-badge" id="winnerBadge">
-                        <span>🏅 Winner: </span>
-                        <span id="winnerName"></span>
+            <!-- Winner Spotlight Section -->
+            <section class="winner-spotlight-section" id="winnerSpotlight" style="display: none;">
+                <div class="winner-header">
+                    <h2>🏆 Winner Spotlight</h2>
+                    <div class="winner-crown">👑</div>
+                </div>
+                
+                <div class="winner-details">
+                    <div class="winner-info">
+                        <div class="winner-model-name" id="winnerModelName">Loading...</div>
+                        <div class="winner-stats">
+                            <div class="winner-score">
+                                <span class="score-label">Score:</span>
+                                <span class="score-value" id="winnerScore">0</span>
+                            </div>
+                            <div class="winner-category">
+                                <span class="category-badge" id="winnerCategory">free</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- Results Grid -->
-                <div class="results-grid" id="resultsGrid">
-                    <!-- Dynamic results will be inserted here -->
-                </div>
-                
-                <!-- Summary -->
-                <div class="results-summary" id="resultsSummary">
-                    <!-- Dynamic summary will be inserted here -->
+                    
+                    <div class="winner-response">
+                        <h3>💬 Winning Response:</h3>
+                        <div class="response-content" id="winnerResponse">
+                            <div class="response-loading">Waiting for results...</div>
+                        </div>
+                        <div class="response-meta">
+                            <span id="winnerTime">Time: 0.0s</span>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>

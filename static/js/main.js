@@ -92,10 +92,29 @@ class AIChatbot {
         const modelsGrid = document.getElementById('modelsGrid');
         modelsGrid.innerHTML = '';
 
-        this.models.forEach(model => {
+        // Split models into two columns (5 left, 4 right)
+        const leftColumn = this.models.slice(0, 5);
+        const rightColumn = this.models.slice(5);
+
+        // Create left column
+        const leftColumnDiv = document.createElement('div');
+        leftColumnDiv.className = 'model-column left-column';
+        leftColumn.forEach(model => {
             const modelElement = this.createModelElement(model);
-            modelsGrid.appendChild(modelElement);
+            leftColumnDiv.appendChild(modelElement);
         });
+
+        // Create right column
+        const rightColumnDiv = document.createElement('div');
+        rightColumnDiv.className = 'model-column right-column';
+        rightColumn.forEach(model => {
+            const modelElement = this.createModelElement(model);
+            rightColumnDiv.appendChild(modelElement);
+        });
+
+        // Add columns to grid
+        modelsGrid.appendChild(leftColumnDiv);
+        modelsGrid.appendChild(rightColumnDiv);
     }
 
     createModelElement(model) {
@@ -135,9 +154,6 @@ class AIChatbot {
         // Clear input and disable
         messageInput.value = '';
         this.setInputDisabled(true);
-        
-        // Show loading overlay
-        this.showLoadingOverlay(true);
         
         // Start processing
         await this.startProcessing(message);
@@ -185,13 +201,14 @@ class AIChatbot {
             if (data.request_id) {
                 this.currentRequestId = data.request_id;
                 this.resetModels();
+                this.activateProgressSection();
                 this.updateProgressText('Processing with 9 AI models...');
             }
         } catch (error) {
             console.error('Error starting processing:', error);
             this.showError('Failed to start processing. Please try again.');
             this.setInputDisabled(false);
-            this.showLoadingOverlay(false);
+            this.deactivateProgressSection();
         }
     }
 
@@ -205,6 +222,11 @@ class AIChatbot {
             }
         });
         this.updateOverallProgress(0);
+    }
+
+    resetModelsInColumns() {
+        // Handle reset for new column structure
+        this.resetModels();
     }
 
     handleModelUpdate(data) {
@@ -263,60 +285,203 @@ class AIChatbot {
         const progressText = document.getElementById('progressText');
         progressText.textContent = text;
     }
+    
+    activateProgressSection() {
+        const progressSection = document.getElementById('progressSection');
+        progressSection.classList.add('active');
+        
+        const progressStatus = document.getElementById('progressStatus');
+        const statusText = progressStatus.querySelector('span:last-child');
+        statusText.textContent = 'Processing...';
+    }
+    
+    deactivateProgressSection() {
+        const progressSection = document.getElementById('progressSection');
+        progressSection.classList.remove('active');
+        
+        const progressStatus = document.getElementById('progressStatus');
+        const statusText = progressStatus.querySelector('span:last-child');
+        statusText.textContent = 'Ready to process';
+    }
 
     async handleRequestComplete(data) {
+        console.log('Request completion received:', data); // Debug log
+        
         const { request_id, winner_model, all_scores } = data;
         
         // Only process completion for current request
-        if (request_id !== this.currentRequestId) return;
+        if (request_id !== this.currentRequestId) {
+            console.log('Ignoring completion for different request');
+            return;
+        }
         
         try {
             // Get detailed results
             const response = await fetch(`/api/result/${request_id}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const results = await response.json();
+            console.log('Results fetched successfully:', results); // Debug log
             
             this.displayResults(results);
             
-            // Hide loading overlay and re-enable input
-            this.showLoadingOverlay(false);
+            // Re-enable input
             this.setInputDisabled(false);
+            
+            // Deactivate progress section
+            this.deactivateProgressSection();
             
         } catch (error) {
             console.error('Error getting results:', error);
             this.showError('Failed to get results. Please try again.');
+            this.deactivateProgressSection();
         }
     }
 
     displayResults(results) {
+        console.log('Displaying results:', results); // Debug log
+        
+        // Get DOM elements with null checks
         const resultsSection = document.getElementById('resultsSection');
         const resultsGrid = document.getElementById('resultsGrid');
-        const winnerBadge = document.getElementById('winnerBadge');
         const winnerName = document.getElementById('winnerName');
         
-        // Show results section
-        resultsSection.style.display = 'block';
-        resultsSection.classList.add('fade-in');
+        console.log('DOM Elements found:', {
+            resultsSection: !!resultsSection,
+            resultsGrid: !!resultsGrid,
+            winnerName: !!winnerName
+        });
         
-        // Update winner display
-        winnerName.textContent = results.winner_display_name;
+        // Handle results section display
+        if (resultsSection) {
+            resultsSection.style.display = 'block';
+            resultsSection.style.visibility = 'visible';
+            resultsSection.style.opacity = '1';
+            resultsSection.classList.add('fade-in');
+        }
+        
+        // Update winner name if element exists
+        if (winnerName) {
+            winnerName.textContent = results.winner_display_name || 'Unknown';
+        }
+        
+        // Handle results grid
+        if (!resultsGrid) {
+            console.error('Results grid element missing');
+            return;
+        }
         
         // Clear previous results
         resultsGrid.innerHTML = '';
         
-        // Sort results by score (descending)
-        const sortedResults = results.results.sort((a, b) => b.score - a.score);
+        // Check if we have results
+        if (!results.results || results.results.length === 0) {
+            console.log('No results to display');
+            resultsGrid.innerHTML = '<p style="padding: 20px; text-align: center; color: #7f8c8d;">No responses received from AI models.</p>';
+            
+            // Update winner spotlight even if no results
+            this.updateWinnerSpotlight(results);
+            return;
+        }
         
-        // Create result items
-        sortedResults.forEach((result, index) => {
-            const resultElement = this.createResultElement(result, index === 0);
-            resultsGrid.appendChild(resultElement);
+        try {
+            // Sort results by score (descending)
+            const sortedResults = results.results.sort((a, b) => b.score - a.score);
+            console.log('Sorted results:', sortedResults); // Debug log
+            
+            // Create result items
+            sortedResults.forEach((result, index) => {
+                const resultElement = this.createResultElement(result, index === 0);
+                resultsGrid.appendChild(resultElement);
+            });
+            
+            // Display summary
+            this.displaySummary(results);
+            
+            // Update winner spotlight
+            this.updateWinnerSpotlight(results);
+            
+        } catch (error) {
+            console.error('Error creating result elements:', error);
+            resultsGrid.innerHTML = '<p style="padding: 20px; text-align: center; color: #e74c3c;">Error displaying results. Please check the console for details.</p>';
+        }
+        
+        // Force scroll to results section
+        if (resultsSection) {
+            setTimeout(() => {
+                resultsSection.scrollIntoView({ behavior: 'smooth' });
+            }, 200);
+        }
+    }
+
+    updateWinnerSpotlight(results) {
+        const winnerSpotlight = document.getElementById('winnerSpotlight');
+        const winnerModelName = document.getElementById('winnerModelName');
+        const winnerScore = document.getElementById('winnerScore');
+        const winnerCategory = document.getElementById('winnerCategory');
+        const winnerResponse = document.getElementById('winnerResponse');
+        const winnerTime = document.getElementById('winnerTime');
+        
+        console.log('Winner spotlight DOM elements:', {
+            winnerSpotlight: !!winnerSpotlight,
+            winnerModelName: !!winnerModelName,
+            winnerScore: !!winnerScore,
+            winnerCategory: !!winnerCategory,
+            winnerResponse: !!winnerResponse,
+            winnerTime: !!winnerTime
         });
         
-        // Display summary
-        this.displaySummary(results);
+        // Check if all required elements exist
+        if (!winnerSpotlight) {
+            console.log('Winner spotlight section not found in DOM');
+            return;
+        }
         
-        // Scroll to results
-        resultsSection.scrollIntoView({ behavior: 'smooth' });
+        if (!results.winner_model || !results.results) {
+            console.log('No winner data available for spotlight');
+            return;
+        }
+        
+        // Find the winning model's result
+        const winnerResult = results.results.find(r => r.model_name === results.winner_model);
+        if (!winnerResult) {
+            console.log('Winner result not found');
+            return;
+        }
+        
+        // Show the winner spotlight
+        winnerSpotlight.style.display = 'block';
+        winnerSpotlight.classList.add('show');
+        
+        // Update winner details safely
+        if (winnerModelName) {
+            winnerModelName.textContent = winnerResult.display_name || 'Unknown';
+        }
+        
+        if (winnerScore) {
+            winnerScore.textContent = `${winnerResult.score} pts`;
+        }
+        
+        if (winnerTime) {
+            winnerTime.textContent = `Time: ${winnerResult.elapsed_time.toFixed(1)}s`;
+        }
+        
+        // Update category badge
+        if (winnerCategory) {
+            winnerCategory.textContent = winnerResult.category;
+            winnerCategory.className = `category-badge ${winnerResult.category}`;
+        }
+        
+        // Format and display the response
+        if (winnerResponse) {
+            const formattedResponse = this.formatResponse(winnerResult.response);
+            winnerResponse.innerHTML = formattedResponse;
+        }
+        
+        console.log('✅ Winner spotlight updated:', winnerResult);
     }
 
     createResultElement(result, isWinner) {
@@ -394,6 +559,9 @@ class AIChatbot {
         resultsSection.style.display = 'none';
         resultsSection.classList.remove('fade-in');
         
+        // Hide winner spotlight
+        this.hideWinnerSpotlight();
+        
         // Reset progress
         this.updateOverallProgress(0);
         this.updateProgressText('Ready to process');
@@ -407,6 +575,35 @@ class AIChatbot {
                 statusElement.textContent = 'Waiting to start';
             }
         });
+        
+        // Deactivate progress section
+        this.deactivateProgressSection();
+    }
+
+    hideWinnerSpotlight() {
+        const winnerSpotlight = document.getElementById('winnerSpotlight');
+        if (winnerSpotlight) {
+            winnerSpotlight.style.display = 'none';
+            winnerSpotlight.classList.remove('show');
+            
+            // Reset content
+            const winnerModelName = document.getElementById('winnerModelName');
+            const winnerScore = document.getElementById('winnerScore');
+            const winnerCategory = document.getElementById('winnerCategory');
+            const winnerResponse = document.getElementById('winnerResponse');
+            const winnerTime = document.getElementById('winnerTime');
+            
+            if (winnerModelName) winnerModelName.textContent = 'Loading...';
+            if (winnerScore) winnerScore.textContent = '0';
+            if (winnerCategory) {
+                winnerCategory.textContent = 'free';
+                winnerCategory.className = 'category-badge';
+            }
+            if (winnerResponse) {
+                winnerResponse.innerHTML = '<div class="response-loading">Waiting for results...</div>';
+            }
+            if (winnerTime) winnerTime.textContent = 'Time: 0.0s';
+        }
     }
 
     showError(message) {
@@ -417,7 +614,13 @@ class AIChatbot {
 
 // Initialize the chatbot when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    window.aiChatbot = new AIChatbot();
+    console.log('DOM loaded, initializing chatbot...');
+    
+    // Small delay to ensure all elements are rendered
+    setTimeout(() => {
+        window.aiChatbot = new AIChatbot();
+        console.log('✅ Chatbot initialized successfully');
+    }, 100);
 });
 
 // Handle page visibility changes to maintain WebSocket connection

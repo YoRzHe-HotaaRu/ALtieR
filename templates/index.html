@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Multi-Model Chatbot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🤖 AI Multi-Model Chatbot</h1>
+            <p>Comparing responses from 9 AI models in real-time</p>
+        </header>
+
+        <!-- Main Chat Area -->
+        <main class="main-content">
+            <!-- Chat Interface -->
+            <section class="chat-section">
+                <div class="chat-header">
+                    <h2>Chat</h2>
+                    <div class="connection-status" id="connectionStatus">
+                        <span class="status-indicator"></span>
+                        <span>Connecting...</span>
+                    </div>
+                </div>
+                
+                <!-- Chat Messages -->
+                <div class="chat-messages" id="chatMessages">
+                    <div class="welcome-message">
+                        <p>👋 Welcome to the AI Multi-Model Chatbot!</p>
+                        <p>Ask a question and watch 9 different AI models compete to give you the best answer.</p>
+                    </div>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="chat-input-container">
+                    <form id="chatForm" class="chat-form">
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="messageInput" 
+                                placeholder="Ask anything... (e.g., Explain quantum computing)" 
+                                required
+                                autocomplete="off"
+                            >
+                            <button type="submit" id="sendButton">
+                                <span class="send-icon">➤</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Progress Tracking Section -->
+            <section class="progress-section">
+                <div class="progress-header">
+                    <h2>🗂️ Model Progress</h2>
+                    <div class="progress-controls">
+                        <button id="clearResults" class="clear-btn">Clear Results</button>
+                    </div>
+                </div>
+                
+                <!-- Models Status Grid -->
+                <div class="models-grid" id="modelsGrid">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+                
+                <!-- Overall Progress -->
+                <div class="overall-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="overallProgress"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">Ready to process</span>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h2>🏆 Results</h2>
+                    <div class="winner-badge" id="winnerBadge">
+                        <span>🏅 Winner: </span>
+                        <span id="winnerName"></span>
+                    </div>
+                </div>
+                
+                <!-- Results Grid -->
+                <div class="results-grid" id="resultsGrid">
+                    <!-- Dynamic results will be inserted here -->
+                </div>
+                
+                <!-- Summary -->
+                <div class="results-summary" id="resultsSummary">
+                    <!-- Dynamic summary will be inserted here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Processing with 9 AI models...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

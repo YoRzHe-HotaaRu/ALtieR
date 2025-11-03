@@ -50,9 +50,19 @@ body {
 .main-content {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     gap: 20px;
     flex: 1;
+}
+
+.results-section {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-top: 20px;
+    grid-column: 1 / -1;
+    display: none;
 }
 
 /* Winner Spotlight Section */
@@ -286,8 +296,10 @@ body {
     margin-bottom: 15px;
     padding: 12px 16px;
     border-radius: 12px;
-    max-width: 80%;
     word-wrap: break-word;
+    display: inline-block;
+    max-width: fit-content;
+    min-width: 60px;
 }
 
 .user-message {
@@ -295,12 +307,14 @@ body {
     color: white;
     margin-left: auto;
     text-align: right;
+    max-width: 85%;
 }
 
 .bot-message {
     background: white;
     border: 1px solid #ecf0f1;
     color: #2c3e50;
+    max-width: 85%;
 }
 
 /* Chat Input */
@@ -560,16 +574,7 @@ body {
     display: block;
 }
 
-/* Results Section */
-.results-section {
-    background: white;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    margin-top: 20px;
-    grid-column: 1 / -1;
-}
-
+/* Results Header */
 .results-header {
     display: flex;
     justify-content: space-between;
